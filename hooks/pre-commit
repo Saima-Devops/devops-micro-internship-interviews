@@ -1,0 +1,36 @@
+#!/bin/bash
+
+blocked=false
+
+echo "Running pre-commit checks..."
+
+# Check staged files
+for file in $(git diff --cached --name-only); do
+
+    # Skip deleted files
+    [ ! -f "$file" ] && continue
+
+    # Check for fake AWS Access Key pattern
+    if grep -Eq 'AKIA[0-9A-Z]{16}' "$file"; then
+        echo "BLOCKED: Secret-like pattern found in $file"
+        blocked=true
+    fi
+
+    # Check file size (1 MB limit)
+    filesize=$(wc -c < "$file")
+
+    if [ "$filesize" -gt 1048576 ]; then
+        echo "BLOCKED: $file is larger than 1 MB"
+        blocked=true
+    fi
+
+done
+
+if [ "$blocked" = true ]; then
+    echo ""
+    echo "Commit aborted."
+    exit 1
+fi
+
+echo "All checks passed."
+exit 0
